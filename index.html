@@ -14,8 +14,11 @@
     
     <!-- Bibliotecas Necessárias -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+	<!-- Catálogo de materiais (arquivo separado, edite aqui os itens) -->
+	<script src="materials.js"></script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -98,26 +101,6 @@
             gap: 8px;
         }
 
-        #face-recognition-preview {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid #2563eb;
-            margin: 0 auto;
-            display: none;
-        }
-
-        .required-badge {
-            background-color: #fee2e2;
-            color: #ef4444;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 800;
-            text-transform: uppercase;
-        }
-
         .hidden-section {
             display: none;
         }
@@ -152,11 +135,11 @@
         <!-- Seção: Identificação -->
         <div class="card p-5 mb-4">
             <h2 class="text-blue-700 font-bold mb-4 flex items-center gap-2 border-b pb-2">
-                <i data-lucide="file-text" size="18"></i> Identificação da Obra
+                <i data-lucide="file-text" size="18"></i> Identificação do Serviço
             </h2>
             <div class="grid grid-cols-1 gap-4">
                 <div class="input-group">
-                    <label>Tipo de Obra</label>
+                    <label>Tipo de Serviço</label>
                     <select id="tipo_obra" onchange="toggleOutroObra()">
                         <option value="">Selecione...</option>
                         <option value="Ligação de Água">Ligação de Água</option>
@@ -172,13 +155,27 @@
                 </div>
                 
                 <div id="container_outro_obra" class="input-group hidden-section">
-                    <label>Especifique o Tipo de Obra</label>
-                    <input type="text" id="obra_outro" placeholder="Digite o tipo de obra">
+                    <label>Especifique o Tipo de Serviço</label>
+                    <input type="text" id="obra_outro" placeholder="Digite o tipo de serviço">
                 </div>
 
                 <div class="input-group">
                     <label>Ordem de Serviço (OS)</label>
                     <input type="text" id="os" placeholder="Número da OS">
+                </div>
+                <div class="input-group">
+                    <label>Município</label>
+                    <select id="municipio" onchange="toggleOutroMunicipio()">
+                        <option value="">Selecione...</option>
+                        <option value="Jarinu">Jarinu</option>
+                        <option value="Itupeva">Itupeva</option>
+                        <option value="Cabriúva">Cabriúva</option>
+                        <option value="Outros">Outros...</option>
+                    </select>
+                </div>
+                <div id="container_outro_municipio" class="input-group hidden-section">
+                    <label>Digite o Município</label>
+                    <input type="text" id="municipio_outro" placeholder="Nome do município">
                 </div>
                 <div class="input-group">
                     <label>Localização</label>
@@ -280,6 +277,18 @@
                 <div class="input-group">
                     <label>Materiais Utilizados</label>
                     <textarea id="materiais" rows="3" placeholder="Tubos, anéis, conexões..."></textarea>
+					<div class="mt-2">
+						<p class="text-[11px] text-slate-500 mb-2">Pesquise e selecione materiais (nome, código e quantidades por unidade):</p>
+						<input id="materiais-busca" type="text" class="p-2 text-sm border rounded bg-white w-full mb-2" placeholder="Pesquisar por nome ou código (digite * para listar todos)">
+						<div id="materiais-resultados" class="space-y-2 mb-3"></div>
+						<div>
+							<p class="text-[11px] text-slate-500 mb-2">Selecionados:</p>
+							<div id="materiais-selecionados" class="space-y-2"></div>
+						</div>
+						<button type="button" onclick="MaterialsSelector.limparSelecionados()" class="btn-primary bg-red-600 mt-2">
+							<i data-lucide="eraser"></i> Limpar Seleção
+						</button>
+					</div>
                 </div>
 
                 <div class="input-group">
@@ -302,38 +311,20 @@
             <p id="storage-warning" class="hidden text-[10px] text-orange-500 mt-2 text-center font-bold">Limite de memória atingido! Gere o PDF para limpar.</p>
         </div>
 
-        <!-- Seção: Reconhecimento Funcional (OBRIGATÓRIO) -->
-        <div class="card p-5 mb-6 text-center border-2 border-blue-100" id="recognition-card">
-            <div class="flex items-center justify-between mb-4 border-b pb-2">
-                <h2 class="text-blue-700 font-bold flex items-center gap-2">
-                    <i data-lucide="user-check" size="18"></i> Reconhecimento Funcional
-                </h2>
-                <span id="status-badge" class="required-badge">Obrigatório</span>
-            </div>
-            
-            <img id="face-recognition-preview" src="" alt="Face do Encarregado" class="mb-4">
-            
-            <div id="recognition-data" class="hidden text-[10px] text-slate-500 mb-4 font-mono bg-slate-50 p-2 rounded text-left">
-                <p id="rec-timestamp" class="mb-1"></p>
-                <p id="rec-location"></p>
-            </div>
-
-            <label class="btn-primary cursor-pointer w-full bg-blue-700 active:scale-95 transition-transform">
-                <i data-lucide="camera"></i> Bater Foto para Validação
-                <input type="file" id="face-input" accept="image/*" capture="user" class="hidden" onchange="handleFaceRecognition(this)">
-            </label>
-            <p id="instruction-text" class="text-[10px] text-red-500 mt-2 font-semibold italic">Aguardando validação facial para libertar o envio...</p>
-        </div>
+		
 
         <!-- Botões de Ação -->
         <div class="flex flex-col gap-3">
-            <button id="btn-pdf" onclick="gerarPDF()" disabled class="btn-primary shadow-lg shadow-blue-200">
-                <i data-lucide="file-down"></i> Gerar Relatório em PDF
+            <button id="btn-pdf" onclick="baixarPacoteZip()" class="btn-primary shadow-lg shadow-blue-200">
+                <i data-lucide="file-down"></i> Baixar ZIP (PDF + JSON)
             </button>
-            <button id="btn-wa" onclick="enviarWhatsapp()" disabled class="btn-primary btn-whatsapp shadow-lg shadow-green-200">
+			<button id="btn-export-json" onclick="exportarJson()" class="btn-primary shadow-lg shadow-blue-200 bg-blue-700">
+				<i data-lucide="download"></i> Exportar JSON
+			</button>
+            <button id="btn-wa" onclick="enviarWhatsapp()" class="btn-primary btn-whatsapp shadow-lg shadow-green-200">
                 <i data-lucide="send"></i> Enviar Tudo via WhatsApp
             </button>
-            <p id="lock-msg" class="text-[10px] text-center text-slate-400 font-bold uppercase tracking-tighter">Bata a foto de validação acima para ativar estes botões</p>
+            <p id="lock-msg" class="text-[10px] text-center text-slate-400 font-bold uppercase tracking-tighter">Preencha os dados e use os botões quando quiser.</p>
         </div>
     </div>
 
@@ -344,10 +335,18 @@
         }
 
         let photos = [];
-        let facePhoto = null;
-        let faceMetadata = { timestamp: '', location: '' };
+        let faceMetadata = { timestamp: '', location: 'Não informado' };
 
-        const campos = ['tipo_obra', 'obra_outro', 'os', 'local', 'tipo_rede', 'posicao_rede', 'pavimento', 'data', 'encarregado', 'equipe', 'extensao', 'diametro', 'qtd_pi', 'qtd_pv', 'materiais', 'obs'];
+		// Catálogo de materiais fallback (caso o materials.js não esteja disponível)
+		// Cada item: { code, name }
+		const DEFAULT_MATERIAIS = [
+			{ code: 'PAD', name: 'PAD' },
+			{ code: 'CIM', name: 'Cimento' },
+			{ code: 'BGS', name: 'BGS' },
+			{ code: 'ARE', name: 'Areia' }
+		];
+
+        const campos = ['tipo_obra', 'obra_outro', 'os', 'municipio', 'municipio_outro', 'local', 'tipo_rede', 'posicao_rede', 'pavimento', 'data', 'encarregado', 'equipe', 'extensao', 'diametro', 'qtd_pi', 'qtd_pv', 'materiais', 'obs'];
 
         window.onload = () => {
             campos.forEach(id => {
@@ -357,30 +356,236 @@
                     if (el) el.value = val;
                 }
                 const el = document.getElementById(id);
-                if (el) el.addEventListener('input', (e) => localStorage.setItem('dasco_' + id, e.target.value));
+                if (el) {
+                    el.addEventListener('input', (e) => localStorage.setItem('dasco_' + id, e.target.value));
+                    el.addEventListener('change', (e) => localStorage.setItem('dasco_' + id, e.target.value));
+                }
             });
 
             toggleOutroObra();
-            toggleProfundidade();
+            toggleOutroMunicipio();
+			toggleProfundidade();
+			MaterialsSelector.init();
+			const busca = document.getElementById('materiais-busca');
+			if (busca) {
+				busca.addEventListener('input', () => MaterialsSelector.renderResultados(busca.value || ''));
+				// Foca no campo de busca para facilitar a digitação imediata
+				setTimeout(() => busca.focus(), 0);
+			}
 
             const savedPhotos = localStorage.getItem('dasco_photos');
             if (savedPhotos) {
                 try { photos = JSON.parse(savedPhotos); renderPhotos(); } catch (e) {}
             }
 
-            const savedFace = localStorage.getItem('dasco_face');
-            if (savedFace) {
-                facePhoto = savedFace;
-                faceMetadata = JSON.parse(localStorage.getItem('dasco_face_meta') || '{}');
-                showFacePreview();
-                checkValidation();
-            }
+            faceMetadata = {
+                timestamp: new Date().toLocaleDateString() + ' às ' + new Date().toLocaleTimeString(),
+                location: 'Não informado'
+            };
+
+			// Carrega JSON salvo anteriormente (se houver)
+			const savedJson = localStorage.getItem('dasco_json_text');
+			if (savedJson) {
+				const preview = document.getElementById('json-preview');
+				if (preview) preview.value = gerarResumoJson(savedJson);
+				const statusEl = document.getElementById('json-status');
+				if (statusEl) {
+					statusEl.innerText = "JSON carregado do armazenamento local.";
+					statusEl.className = "text-[11px] font-semibold text-green-600";
+				}
+			}
 
             if (!document.getElementById('data').value) {
                 document.getElementById('data').value = new Date().toISOString().split('T')[0];
             }
             initIcons();
         };
+
+		// Módulo do seletor de materiais com busca, código e quantidades (m, concha, lata, pá)
+		const MaterialsSelector = (() => {
+			const LS_SEL = 'dasco_materiais_sel_v2';
+			let atualizando = false; // evita loop na sincronização
+			function normalizarCatalogo(items) {
+				return (items || []).map(i => ({
+					code: String(i.code || '').trim(),
+					name: String(i.name || '').trim()
+				})).filter(i => i.code && i.name);
+			}
+			function getCatalogo() {
+				// Prioriza catálogo externo (materials.js). Se não existir, usa fallback.
+				const externo = Array.isArray(window.MATERIALS_CATALOG) ? window.MATERIALS_CATALOG : [];
+				const base = externo.length ? externo : DEFAULT_MATERIAIS;
+				return normalizarCatalogo(base);
+			}
+			function getSelecionados() {
+				try { return JSON.parse(localStorage.getItem(LS_SEL) || '[]'); } catch { return []; }
+			}
+			function setSelecionados(lista) {
+				localStorage.setItem(LS_SEL, JSON.stringify(lista));
+			}
+			function renderResultados(filtro) {
+				const ctn = document.getElementById('materiais-resultados');
+				if (!ctn) return;
+				const fRaw = String(filtro || '');
+				const f = fRaw.toLowerCase();
+				// Oculta a lista até digitar ao menos 1 caractere; '*' exibe todos
+				if (fRaw.length < 1) { ctn.innerHTML = ''; return; }
+				const catalogo = getCatalogo().filter(i => {
+					if (f === '*') return true;
+					return i.name.toLowerCase().includes(f) || i.code.toLowerCase().includes(f);
+				});
+				const selecionados = getSelecionados();
+				const selectedCodes = new Set(selecionados.map(s => s.code));
+				ctn.innerHTML = '';
+				if (catalogo.length === 0) {
+					const vazio = document.createElement('div');
+					vazio.className = 'text-xs text-slate-500 italic';
+					vazio.innerText = 'Nenhum material encontrado. Tente outra busca.';
+					ctn.appendChild(vazio);
+					return;
+				}
+				catalogo.forEach(item => {
+					const row = document.createElement('div');
+					row.className = 'flex items-center justify-between gap-2 p-2 border rounded bg-white';
+					const info = document.createElement('div');
+					info.className = 'text-sm';
+					// Visual: só o nome (código oculto visualmente), com tooltip exibindo o código
+					const span = document.createElement('span');
+					span.className = 'font-semibold';
+					span.innerText = item.name;
+					span.title = `Código: ${item.code}`;
+					info.appendChild(span);
+					const btn = document.createElement('button');
+					btn.type = 'button';
+					btn.className = 'btn-primary bg-blue-700';
+					btn.innerText = selectedCodes.has(item.code) ? 'Adicionado' : 'Adicionar';
+					btn.disabled = selectedCodes.has(item.code);
+					btn.addEventListener('click', () => {
+						adicionar(item);
+						renderResultados(filtro);
+						renderSelecionados();
+						atualizarTextarea();
+					});
+					row.appendChild(info);
+					row.appendChild(btn);
+					ctn.appendChild(row);
+				});
+				initIcons();
+			}
+			function renderSelecionados() {
+				const ctn = document.getElementById('materiais-selecionados');
+				if (!ctn) return;
+				const selecionados = getSelecionados();
+				ctn.innerHTML = '';
+				// Cabeçalho organizado: Código | Nome | m | concha | lata | pá | Ação
+				if (selecionados.length > 0) {
+					const header = document.createElement('div');
+					header.className = 'grid grid-cols-7 gap-2 px-2 py-1 text-[11px] font-semibold text-slate-600';
+					['Código', 'Nome', 'm', 'concha', 'lata', 'pá', ''].forEach(txt => {
+						const h = document.createElement('div');
+						h.innerText = txt;
+						header.appendChild(h);
+					});
+					ctn.appendChild(header);
+				}
+				selecionados.forEach((s, idx) => {
+					if (!s.qty) s.qty = { m: '', concha: '', lata: '', pa: '' };
+					const row = document.createElement('div');
+					row.className = 'grid grid-cols-7 gap-2 items-center p-2 border rounded bg-white';
+					// Código
+					const codeEl = document.createElement('div');
+					codeEl.className = 'text-xs font-mono bg-slate-100 px-2 py-1 rounded text-slate-700';
+					codeEl.innerText = s.code;
+					// Nome
+					const nameEl = document.createElement('div');
+					nameEl.className = 'text-sm font-semibold';
+					nameEl.innerText = s.name;
+					// Inputs de quantidade organizados
+					const units = [
+						{ key: 'm', label: 'm' },
+						{ key: 'concha', label: 'concha' },
+						{ key: 'lata', label: 'lata' },
+						{ key: 'pa', label: 'pá' }
+					];
+					const inputs = units.map(u => {
+						const inp = document.createElement('input');
+						inp.type = 'number';
+						inp.min = '0';
+						inp.step = '0.01';
+						inp.placeholder = u.label;
+						inp.className = 'p-2 text-sm border rounded bg-white w-full';
+						inp.value = s.qty[u.key] ?? '';
+						inp.addEventListener('input', () => {
+							const lista = getSelecionados();
+							if (lista[idx]) {
+								lista[idx].qty = Object.assign({ m: '', concha: '', lata: '', pa: '' }, lista[idx].qty, { [u.key]: inp.value });
+								setSelecionados(lista);
+								atualizarTextarea();
+							}
+						});
+						return inp;
+					});
+					// Botão remover
+					const btnRem = document.createElement('button');
+					btnRem.type = 'button';
+					btnRem.className = 'btn-primary bg-red-600';
+					btnRem.innerText = 'Remover';
+					btnRem.addEventListener('click', () => {
+						remover(s.code);
+						renderSelecionados();
+						atualizarTextarea();
+						const busca = document.getElementById('materiais-busca');
+						renderResultados(busca ? busca.value : '');
+					});
+					// Montagem da linha
+					row.appendChild(codeEl);
+					row.appendChild(nameEl);
+					inputs.forEach(el => row.appendChild(el));
+					row.appendChild(btnRem);
+					ctn.appendChild(row);
+				});
+				initIcons();
+			}
+			function adicionar(item) {
+				const atual = getSelecionados();
+				if (atual.find(a => a.code === item.code)) return;
+				atual.push({ code: item.code, name: item.name, qty: { m: '', concha: '', lata: '', pa: '' } });
+				setSelecionados(atual);
+			}
+			function remover(code) {
+				const atual = getSelecionados().filter(a => a.code !== code);
+				setSelecionados(atual);
+			}
+			function atualizarTextarea() {
+				const ta = document.getElementById('materiais');
+				if (!ta) return;
+				const lista = getSelecionados();
+				atualizando = true;
+				// Na UI mostra o nome; no campo 'materiais' salva apenas os códigos
+				const somenteCodigos = lista.map(it => it.code).join(', ');
+				ta.value = somenteCodigos;
+				localStorage.setItem('dasco_materiais', ta.value);
+				atualizando = false;
+			}
+			function syncFromTextarea() {
+				if (atualizando) return;
+				// Não suportado neste modo avançado (textarea é apenas resumo)
+			}
+			function limparSelecionados() {
+				setSelecionados([]);
+				renderSelecionados();
+				atualizarTextarea();
+				const busca = document.getElementById('materiais-busca');
+				renderResultados(busca ? busca.value : '');
+			}
+			function init() {
+				renderResultados('');
+				renderSelecionados();
+				const ta = document.getElementById('materiais');
+				if (ta) ta.addEventListener('input', syncFromTextarea);
+			}
+			return { init, renderResultados, limparSelecionados, getSelecionados };
+		})();
 
         function toggleOutroObra() {
             const select = document.getElementById('tipo_obra');
@@ -390,6 +595,17 @@
                 container.style.display = 'none';
                 document.getElementById('obra_outro').value = '';
                 localStorage.removeItem('dasco_obra_outro');
+            }
+        }
+
+        function toggleOutroMunicipio() {
+            const select = document.getElementById('municipio');
+            const container = document.getElementById('container_outro_municipio');
+            if (select && select.value === 'Outros') container.style.display = 'block';
+            else if (container) {
+                container.style.display = 'none';
+                document.getElementById('municipio_outro').value = '';
+                localStorage.removeItem('dasco_municipio_outro');
             }
         }
 
@@ -451,73 +667,6 @@
             }
         }
 
-        async function handleFaceRecognition(input) {
-            const file = input.files[0];
-            if (!file) return;
-
-            document.getElementById('instruction-text').innerText = "Processando reconhecimento...";
-            document.getElementById('instruction-text').className = "text-[10px] text-blue-500 mt-2 font-bold animate-pulse";
-
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition((pos) => {
-                    faceMetadata.location = `Lat: ${pos.coords.latitude.toFixed(4)}, Long: ${pos.coords.longitude.toFixed(4)}`;
-                    updateMetadataDisplay();
-                }, () => {
-                    faceMetadata.location = "GPS não disponível (Permissão negada)";
-                    updateMetadataDisplay();
-                }, { timeout: 10000 });
-            }
-
-            const agora = new Date();
-            faceMetadata.timestamp = agora.toLocaleDateString() + ' às ' + agora.toLocaleTimeString();
-
-            facePhoto = await compressImage(file, 400); 
-            localStorage.setItem('dasco_face', facePhoto);
-            localStorage.setItem('dasco_face_meta', JSON.stringify(faceMetadata));
-            
-            showFacePreview();
-            checkValidation();
-        }
-
-        function updateMetadataDisplay() {
-            if (document.getElementById('recognition-data').classList.contains('hidden')) return;
-            document.getElementById('rec-location').innerText = `GPS: ${faceMetadata.location}`;
-            localStorage.setItem('dasco_face_meta', JSON.stringify(faceMetadata));
-        }
-
-        function showFacePreview() {
-            const img = document.getElementById('face-recognition-preview');
-            img.src = facePhoto;
-            img.style.display = 'block';
-            
-            const card = document.getElementById('recognition-card');
-            card.classList.remove('border-blue-100');
-            card.classList.add('border-green-400', 'bg-green-50');
-
-            const badge = document.getElementById('status-badge');
-            badge.innerText = "Validado";
-            badge.className = "bg-green-500 text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase";
-
-            document.getElementById('recognition-data').classList.remove('hidden');
-            document.getElementById('rec-timestamp').innerText = `VALIDADO EM: ${faceMetadata.timestamp}`;
-            document.getElementById('rec-location').innerText = `GPS: ${faceMetadata.location}`;
-            
-            document.getElementById('instruction-text').innerText = "✅ Identidade confirmada com sucesso.";
-            document.getElementById('instruction-text').className = "text-[10px] text-green-600 mt-2 font-bold";
-        }
-
-        function checkValidation() {
-            const hasFace = !!facePhoto;
-            document.getElementById('btn-pdf').disabled = !hasFace;
-            document.getElementById('btn-wa').disabled = !hasFace;
-            
-            const lockMsg = document.getElementById('lock-msg');
-            if(hasFace) {
-                lockMsg.innerText = "Ações libertadas";
-                lockMsg.className = "text-[10px] text-center text-green-500 font-bold uppercase";
-            }
-        }
-
         async function handlePhotos(input) {
             const files = Array.from(input.files);
             for (const file of files) {
@@ -527,6 +676,135 @@
             savePhotos();
             renderPhotos();
         }
+
+		// JSON: leitura, validação simples e armazenamento
+		function gerarResumoJson(jsonText) {
+			try {
+				const obj = JSON.parse(jsonText);
+				const chaves = Array.isArray(obj) ? (obj[0] ? Object.keys(obj[0]) : []) : Object.keys(obj);
+				const inicio = jsonText.trim().slice(0, 600);
+				return `Chaves detectadas: ${chaves.join(', ') || '—'}\n\n${inicio}${jsonText.length > 600 ? ' ...' : ''}`;
+			} catch {
+				return jsonText.trim().slice(0, 600);
+			}
+		}
+
+		function handleJson(input) {
+			const file = input.files && input.files[0];
+			if (!file) return;
+			if (!/\.json$/i.test(file.name) && file.type !== 'application/json') {
+				const statusEl = document.getElementById('json-status');
+				if (statusEl) {
+					statusEl.innerText = "Arquivo inválido. Selecione um .json.";
+					statusEl.className = "text-[11px] font-semibold text-red-600";
+				}
+				input.value = "";
+				return;
+			}
+			const reader = new FileReader();
+			reader.onload = () => {
+				const text = String(reader.result || "");
+				try {
+					// Tenta validar o JSON
+					const parsed = JSON.parse(text);
+					localStorage.setItem('dasco_json', JSON.stringify(parsed)); // armazenar estruturado
+					localStorage.setItem('dasco_json_text', text); // armazenar bruto (para reexibir)
+					const preview = document.getElementById('json-preview');
+					if (preview) preview.value = gerarResumoJson(text);
+					const statusEl = document.getElementById('json-status');
+					if (statusEl) {
+						statusEl.innerText = `JSON "${file.name}" anexado com sucesso.`;
+						statusEl.className = "text-[11px] font-semibold text-green-600";
+					}
+				} catch (e) {
+					const statusEl = document.getElementById('json-status');
+					if (statusEl) {
+						statusEl.innerText = "Conteúdo não é um JSON válido.";
+						statusEl.className = "text-[11px] font-semibold text-red-600";
+					}
+				}
+			};
+			reader.onerror = () => {
+				const statusEl = document.getElementById('json-status');
+				if (statusEl) {
+					statusEl.innerText = "Falha ao ler o arquivo JSON.";
+					statusEl.className = "text-[11px] font-semibold text-red-600";
+				}
+			};
+			reader.readAsText(file, 'utf-8');
+		}
+
+		function nomeArquivoBase(dados) {
+			const dataForm = dados || {};
+			const os = (dataForm.os || 'sem-os').toString().trim();
+			const obra = (dataForm.obra || 'modelo').toString().trim();
+			const dataStr = (dataForm.data || new Date().toLocaleDateString()).toString().trim();
+			const nomeLimpo = (str) => String(str ?? '')
+				.replace(/[/\\?%*:|"<>]/g, '-')
+				.replace(/\s+/g, '-')
+				.trim();
+			return `${nomeLimpo('OBRA')}-${nomeLimpo(obra)}-${nomeLimpo(os)}-${nomeLimpo(dataStr)}`;
+		}
+
+		function montarPacoteJson(dados) {
+			let lat = "", long = "";
+			if (faceMetadata && typeof faceMetadata.location === 'string') {
+				const m = faceMetadata.location.match(/Lat:\s*([\-0-9\.]+).*Long:\s*([\-0-9\.]+)/i);
+				if (m) { lat = m[1]; long = m[2]; }
+			}
+
+			const profundidadeTexto = dados.profundidades || '';
+			const fotosArray = Array.isArray(photos) ? photos : [];
+			const idNum = Date.now();
+			const municipioFinal = String(dados.municipio || "").trim();
+
+			return {
+				os: String(dados.os || "").trim(),
+				municipio: municipioFinal,
+				endereco: String(dados.local || "").trim(),
+				bairro: "",
+				tipo_servico: String(dados.obra || "").trim(),
+				profundidade: String(profundidadeTexto || "").trim(),
+				diametro: String((document.getElementById('diametro').value || "")).trim(),
+				metragem: String((document.getElementById('extensao').value || "")).trim(),
+				tipo_pavimento: String((document.getElementById('pavimento').value || "")).trim(),
+				tipo_rede: String((document.getElementById('tipo_rede').value || "")).trim(),
+				posicao_rede: String((document.getElementById('posicao_rede').value || "")).trim(),
+				longitude: String(long || ""),
+				latitude: String(lat || ""),
+				id: idNum,
+				dataCadastro: String(dados.data || ""),
+				fotos: fotosArray
+			};
+		}
+
+		function exportarJson() {
+			try {
+				const dados = obterDadosRelatorio();
+				const pacote = montarPacoteJson(dados);
+				const text = JSON.stringify(pacote, null, 2);
+				const blob = new Blob([text], { type: 'application/json' });
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement('a');
+				a.download = `${nomeArquivoBase(dados)}.json`;
+				a.href = url;
+				document.body.appendChild(a);
+				a.click();
+				document.body.removeChild(a);
+				setTimeout(() => URL.revokeObjectURL(url), 1000);
+				const lockMsg = document.getElementById('lock-msg');
+				if (lockMsg) {
+					lockMsg.innerText = "Arquivo JSON exportado.";
+					lockMsg.className = "text-[10px] text-center text-green-600 font-bold uppercase tracking-tighter";
+				}
+			} catch (e) {
+				const lockMsg = document.getElementById('lock-msg');
+				if (lockMsg) {
+					lockMsg.innerText = "Falha ao exportar o JSON.";
+					lockMsg.className = "text-[10px] text-center text-red-600 font-bold uppercase tracking-tighter";
+				}
+			}
+		}
 
         function compressImage(file, maxSide) {
             return new Promise((resolve) => {
@@ -587,6 +865,9 @@
             const tipoObraFinal = document.getElementById('tipo_obra').value === 'Outros' 
                 ? document.getElementById('obra_outro').value 
                 : document.getElementById('tipo_obra').value;
+            const municipioFinal = document.getElementById('municipio').value === 'Outros'
+                ? document.getElementById('municipio_outro').value
+                : document.getElementById('municipio').value;
 
             const qpi = parseInt(document.getElementById('qtd_pi').value) || 0;
             const qpv = parseInt(document.getElementById('qtd_pv').value) || 0;
@@ -606,6 +887,7 @@
             return {
                 obra: tipoObraFinal,
                 os: document.getElementById('os').value,
+                municipio: municipioFinal,
                 local: document.getElementById('local').value,
                 rede: document.getElementById('tipo_rede').value,
                 posicao: document.getElementById('posicao_rede').value,
@@ -623,8 +905,7 @@
             };
         }
 
-        async function gerarPDF() {
-            if(!facePhoto) return;
+        async function gerarPDF(downloadDireto = true) {
             const data = obterDadosRelatorio();
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
@@ -652,8 +933,9 @@
             doc.setFontSize(10);
             currentY += 12;
             const infoIdent = [
-                ["Tipo de Obra:", data.obra],
+                ["Tipo de Serviço:", data.obra],
                 ["Ordem de Serviço:", data.os],
+                ["Município:", data.municipio],
                 ["Localização:", data.local],
                 ["Tipo da Rede:", data.rede],
                 ["Posição da Rede:", data.posicao],
@@ -724,7 +1006,10 @@
             doc.setLineWidth(0.5);
             doc.rect(margin, currentY, 180, 70, 'D');
 
-            doc.addImage(facePhoto, 'JPEG', margin + 10, currentY + 10, 50, 50);
+            doc.setTextColor(120, 120, 120);
+            doc.setFont("helvetica", "italic");
+            doc.setFontSize(10);
+            doc.text("Reconhecimento funcional removido.", margin + 10, currentY + 25);
             
             doc.setTextColor(30, 58, 138);
             doc.setFontSize(12);
@@ -740,21 +1025,61 @@
             doc.setFont("helvetica", "bold");
             doc.text("HORÁRIO DA VALIDAÇÃO:", margin + 70, currentY + 38);
             doc.setFont("helvetica", "normal");
-            doc.text(`${faceMetadata.timestamp}`, margin + 70, currentY + 43);
+            doc.text(`${faceMetadata.timestamp || "Não informado"}`, margin + 70, currentY + 43);
             
             doc.setFont("helvetica", "bold");
             doc.text("LOCALIZAÇÃO GPS:", margin + 70, currentY + 51);
             doc.setFont("helvetica", "normal");
-            doc.text(`${faceMetadata.location}`, margin + 70, currentY + 56);
+            doc.text(`${faceMetadata.location || "Não informado"}`, margin + 70, currentY + 56);
             
             doc.setFont("helvetica", "bold");
             doc.setTextColor(25, 100, 25);
             doc.text(`ID DE SEGURANÇA: ${Math.random().toString(36).substr(2, 12).toUpperCase()}`, margin + 70, currentY + 64);
 
-            // Nome do arquivo baseado no tipo de obra (limpando caracteres especiais para evitar erros no SO)
-            const nomeArquivoLimpo = (data.obra || 'RELATORIO').replace(/[/\\?%*:|"<>]/g, '-');
-            doc.save(`${nomeArquivoLimpo}.pdf`);
+            const pdfBlob = doc.output('blob');
+            if (!downloadDireto) return { blob: pdfBlob, dados: data };
+
+            const nomeArquivo = `${nomeArquivoBase(data)}.pdf`;
+            doc.save(nomeArquivo);
         }
+
+		async function baixarPacoteZip() {
+			const lockMsg = document.getElementById('lock-msg');
+			try {
+				if (typeof JSZip === 'undefined') {
+					throw new Error('Biblioteca JSZip não carregada.');
+				}
+
+				const { blob: pdfBlob, dados } = await gerarPDF(false);
+				const jsonObj = montarPacoteJson(dados);
+				const jsonText = JSON.stringify(jsonObj, null, 2);
+				const base = nomeArquivoBase(dados);
+
+				const zip = new JSZip();
+				zip.file(`${base}.pdf`, pdfBlob);
+				zip.file(`${base}.json`, jsonText);
+
+				const zipBlob = await zip.generateAsync({ type: 'blob' });
+				const url = URL.createObjectURL(zipBlob);
+				const a = document.createElement('a');
+				a.href = url;
+				a.download = `${base}.zip`;
+				document.body.appendChild(a);
+				a.click();
+				document.body.removeChild(a);
+				setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+				if (lockMsg) {
+					lockMsg.innerText = "ZIP baixado com PDF e JSON.";
+					lockMsg.className = "text-[10px] text-center text-green-600 font-bold uppercase tracking-tighter";
+				}
+			} catch (e) {
+				if (lockMsg) {
+					lockMsg.innerText = "Falha ao gerar ZIP com PDF e JSON.";
+					lockMsg.className = "text-[10px] text-center text-red-600 font-bold uppercase tracking-tighter";
+				}
+			}
+		}
 
         function enviarWhatsapp() {
             const data = obterDadosRelatorio();
